@@ -11,25 +11,20 @@ class CounterView extends StatefulWidget {
 class _CounterViewState extends State<CounterView> {
   final CounterController _controller = CounterController();
 
-  // Warna Riwayat
-  Color _getHistoryColor(String text) {
-    if (text.contains('Tambah')) {
-      return Colors.green;
-    } else if (text.contains('Kurang')) {
-      return Colors.orange;
-    }
-    return Colors.black;
+  Color _getHistoryBackground(String text) {
+    if (text.contains('Tambah')) return const Color.fromARGB(255, 186, 225, 188);
+    if (text.contains('Kurang')) return const Color.fromARGB(255, 231, 161, 150);
+    if (text.contains('Reset')) return const Color.fromARGB(255, 194, 193, 196);
+    return Colors.grey.shade200;
   }
 
-  // Validasi Reset
   void _showResetConfirmation() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Konfirmasi Reset'),
         content: const Text(
-          'Apakah kamu yakin ingin mereset counter?\n'
-          'Semua riwayat akan dihapus.',
+          'Apakah kamu yakin ingin mereset counter?',
         ),
         actions: [
           TextButton(
@@ -37,12 +32,17 @@ class _CounterViewState extends State<CounterView> {
             child: const Text('Batal'),
           ),
           ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.grey,
+            ),
             onPressed: () {
+              Navigator.pop(context); 
+
               setState(() {
                 _controller.reset();
-              });
-              Navigator.pop(context);
-            },
+            });
+          },
+
             child: const Text('Reset'),
           ),
         ],
@@ -60,23 +60,19 @@ class _CounterViewState extends State<CounterView> {
         backgroundColor: Colors.deepPurple,
         centerTitle: true,
         title: const Text(
-          'LogBook - Multi Step',
+          'LogBook: SRP Version',
           style: TextStyle(color: Colors.white),
         ),
       ),
       body: Stack(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
+            padding: const EdgeInsets.fromLTRB(16, 48, 16, 100),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Total Hitungan
                 const Center(
-                  child: Text(
-                    'Total Hitungan',
-                    style: sectionStyle,
-                  ),
+                  child: Text('Total Hitungan:', style: sectionStyle),
                 ),
                 const SizedBox(height: 8),
                 Center(
@@ -86,16 +82,15 @@ class _CounterViewState extends State<CounterView> {
                   ),
                 ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 28),
 
-                // Slider
                 Text('Step: ${_controller.step}', style: sectionStyle),
                 Slider(
                   min: 1,
                   max: 10,
                   divisions: 9,
-                  label: _controller.step.toString(),
                   value: _controller.step.toDouble(),
+                  label: _controller.step.toString(),
                   onChanged: (value) {
                     setState(() {
                       _controller.setStep(value.toInt());
@@ -103,24 +98,33 @@ class _CounterViewState extends State<CounterView> {
                   },
                 ),
 
-                const SizedBox(height: 12),
+                const SizedBox(height: 20),
 
-                // Riwayat
-                const Text('Riwayat Aktivitas', style: sectionStyle),
-                const SizedBox(height: 4),
+                const Text('Riwayat Aktivitas:', style: sectionStyle),
+                const SizedBox(height: 8),
 
                 Expanded(
                   child: ListView.separated(
                     itemCount: _controller.history.length,
-                    separatorBuilder: (_, __) =>
-                        const SizedBox(height: 4),
+                    separatorBuilder: (_, _) =>
+                        const SizedBox(height: 6),
                     itemBuilder: (context, index) {
                       final text = _controller.history[index];
-                      return Text(
-                        text,
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: _getHistoryColor(text),
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 8,
+                          horizontal: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _getHistoryBackground(text),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          text,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Colors.black,
+                          ),
                         ),
                       );
                     },
@@ -130,7 +134,7 @@ class _CounterViewState extends State<CounterView> {
             ),
           ),
 
-          // Tombol
+          // Tombol Aksi
           Positioned(
             bottom: 16,
             left: 16,
@@ -151,6 +155,7 @@ class _CounterViewState extends State<CounterView> {
             child: Center(
               child: FloatingActionButton(
                 heroTag: 'reset',
+                backgroundColor: Colors.grey,
                 onPressed: _showResetConfirmation,
                 child: const Icon(Icons.refresh),
               ),

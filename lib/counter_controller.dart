@@ -17,9 +17,8 @@ class CounterController {
     return '($hour:$minute)';
   }
 
-  void _addHistory(String action) {
-    _history.insert(0, action);
-
+  void _addHistory(String text) {
+    _history.insert(0, text);
     if (_history.length > 5) {
       _history.removeLast();
     }
@@ -47,6 +46,10 @@ class CounterController {
 
   void reset() {
     _counter = 0;
-    _history.clear(); 
+    _step = 1;
+
+    _addHistory(
+      '${_currentTime()} Berhasil Reset',
+    );
   }
 }
