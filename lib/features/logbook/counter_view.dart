@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
-import '../counter_controller.dart';
+import 'package:logbook_app_001/features/auth/login_view.dart';
+import 'package:logbook_app_001/features/logbook/counter_controller.dart';
 
 class CounterView extends StatefulWidget {
-  const CounterView({super.key});
+  final String username;
+
+  const CounterView({
+    super.key,
+    required this.username,
+  });
 
   @override
   State<CounterView> createState() => _CounterViewState();
@@ -12,9 +18,15 @@ class _CounterViewState extends State<CounterView> {
   final CounterController _controller = CounterController();
 
   Color _getHistoryBackground(String text) {
-    if (text.contains('Tambah')) return const Color.fromARGB(255, 186, 225, 188);
-    if (text.contains('Kurang')) return const Color.fromARGB(255, 231, 161, 150);
-    if (text.contains('Reset')) return const Color.fromARGB(255, 194, 193, 196);
+    if (text.contains('Tambah')) {
+      return const Color.fromARGB(255, 186, 225, 188);
+    }
+    if (text.contains('Kurang')) {
+      return const Color.fromARGB(255, 231, 161, 150);
+    }
+    if (text.contains('Reset')) {
+      return const Color.fromARGB(255, 194, 193, 196);
+    }
     return Colors.grey.shade200;
   }
 
@@ -36,13 +48,11 @@ class _CounterViewState extends State<CounterView> {
               backgroundColor: Colors.grey,
             ),
             onPressed: () {
-              Navigator.pop(context); 
-
+              Navigator.pop(context);
               setState(() {
                 _controller.reset();
-            });
-          },
-
+              });
+            },
             child: const Text('Reset'),
           ),
         ],
@@ -57,13 +67,55 @@ class _CounterViewState extends State<CounterView> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.deepPurple,
-        centerTitle: true,
-        title: const Text(
-          'LogBook: SRP Version',
-          style: TextStyle(color: Colors.white),
-        ),
+      backgroundColor: Colors.deepPurple,
+      centerTitle: true,
+      title: Text(
+        'LogBook: ${widget.username}',
+        style: const TextStyle(color: Colors.white),
       ),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.logout),
+          onPressed: () {
+            showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  title: const Text("Konfirmasi Logout"),
+                  content: const Text(
+                    "Apakah Anda yakin? Data sebelumnya akan ter reset.",
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text("Batal"),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const LoginView(),
+                          ),
+                          (route) => false,
+                        );
+                      },
+                      child: const Text(
+                        "Ya, Keluar",
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        ),
+      ],
+    ),
+
       body: Stack(
         children: [
           Padding(
@@ -71,6 +123,17 @@ class _CounterViewState extends State<CounterView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Center(
+                  child: Text(
+                    'Selamat Datang, ${widget.username}!',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
                 const Center(
                   child: Text('Total Hitungan:', style: sectionStyle),
                 ),
@@ -134,7 +197,6 @@ class _CounterViewState extends State<CounterView> {
             ),
           ),
 
-          // Tombol Aksi
           Positioned(
             bottom: 16,
             left: 16,
@@ -148,6 +210,7 @@ class _CounterViewState extends State<CounterView> {
               child: const Icon(Icons.remove),
             ),
           ),
+
           Positioned(
             bottom: 16,
             left: 0,
@@ -161,6 +224,7 @@ class _CounterViewState extends State<CounterView> {
               ),
             ),
           ),
+
           Positioned(
             bottom: 16,
             right: 16,
