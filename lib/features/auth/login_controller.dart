@@ -1,14 +1,36 @@
 class LoginController {
-  // Database sederhana (Hardcoded)
-  final String _validUsername = "admin";
-  final String _validPassword = "123";
+  final Map<String, String> _users = {
+    "admin": "123",
+    "zahwa": "456",
+    "nazala": "789",
+  };
 
-  // Fungsi pengecekan (Logic-Only)
-  // Fungsi ini mengembalikan true jika cocok, false jika salah.
+  int _failedAttempts = 0;
+  bool _isLocked = false;
+
+  bool get isLocked => _isLocked;
+  int get failedAttempts => _failedAttempts;
+
   bool login(String username, String password) {
-    if (username == _validUsername && password == _validPassword) {
+    if (_isLocked) return false;
+
+    if (_users.containsKey(username) &&
+        _users[username] == password) {
+      _failedAttempts = 0;
       return true;
+    } else {
+      _failedAttempts++;
+
+      if (_failedAttempts >= 3) {
+        _isLocked = true;
+      }
+
+      return false;
     }
-    return false;
+  }
+
+  void resetLock() {
+    _failedAttempts = 0;
+    _isLocked = false;
   }
 }
