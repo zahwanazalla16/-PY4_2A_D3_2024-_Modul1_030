@@ -19,7 +19,7 @@ class CounterController {
     return '($hour:$minute)';
   }
 
-  // load data saat app dibuka
+  // load data saat app dibuka 
   Future<void> loadData(String username) async {
     final prefs = await SharedPreferences.getInstance();
 
