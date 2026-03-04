@@ -105,11 +105,20 @@ class _OnboardingViewState extends State<OnboardingView> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(
-                      builder: (context) => const LoginView(),
-                    ),
-                  );
+                  if (_currentIndex == _pages.length - 1) {
+                    // Last page: navigate to LoginView
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                        builder: (context) => const LoginView(),
+                      ),
+                    );
+                  } else {
+                    // Next page: scroll to next page
+                    _controller.nextPage(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                    );
+                  }
                 },
                 child: Text(
                   _currentIndex == _pages.length - 1 ? 'Mulai' : 'Lanjut',

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:logbook_app_001/features/auth/login_view.dart';
-import 'package:logbook_app_001/features/logbook/counter_controller.dart';
+import 'package:logbook_app_001/features/counter/counter_controller.dart';
 
 class CounterView extends StatefulWidget {
   final String username;

@@ -1,7 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:intl/intl.dart';
 import 'package:logbook_app_001/features/onboarding/onboarding_view.dart';
 
-void main() {
+
+Future<void> main() async {
+   WidgetsFlutterBinding.ensureInitialized();
+  // Load ENV
+  await dotenv.load(fileName: ".env");
+  // Initialize intl untuk Bahasa Indonesia
+  await initializeDateFormatting('id_ID', null);
+  Intl.defaultLocale = 'id_ID';
   runApp(const MyApp());
 }
 
@@ -17,7 +27,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
 
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepPurple,
+          seedColor: const Color(0xFFA8D5BA),
           brightness: Brightness.light,
         ),
 
@@ -26,7 +36,7 @@ class MyApp extends StatelessWidget {
         appBarTheme: const AppBarTheme(
           elevation: 0,
           centerTitle: true,
-          backgroundColor: Colors.deepPurple,
+          backgroundColor: Color(0xFFA8D5BA),
           foregroundColor: Colors.white,
         ),
 
@@ -46,7 +56,7 @@ class MyApp extends StatelessWidget {
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide:
-                const BorderSide(color: Colors.deepPurple),
+                const BorderSide(color: Color(0xFFA8D5BA)),
           ),
         ),
 
@@ -64,7 +74,7 @@ class MyApp extends StatelessWidget {
         floatingActionButtonTheme:
             const FloatingActionButtonThemeData(
           elevation: 4,
-          backgroundColor: Colors.deepPurple,
+          backgroundColor: Color(0xFFA8D5BA),
           foregroundColor: Colors.white,
         ),
       ),
