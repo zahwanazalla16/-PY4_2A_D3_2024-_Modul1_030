@@ -1,20 +1,51 @@
 import 'package:mongo_dart/mongo_dart.dart';
+import 'package:hive/hive.dart';
 
+part 'log_model.g.dart';
+
+@HiveType(typeId: 0)
 class LogModel {
-  final ObjectId? id;
+  @HiveField(0)
+  final String? id;
+  
+  @HiveField(1)
   final String title;
+  
+  @HiveField(2)
   final String description;
+  
+  @HiveField(3)
   final DateTime date;
+  
+  @HiveField(4)
   final String category;
+  
+  @HiveField(5)
   final String username;
+  
+  @HiveField(6)
+  final String authorId;
+  
+  @HiveField(7)
+  final String teamId;
+
+  @HiveField(8)
+  final bool isPublic;
+
+  @HiveField(9)
+  final bool isSynced;
 
   LogModel({
     this.id,
     required this.title,
     required this.description,
     required this.date,
-    this.category = 'perkuliahan',
+    this.category = 'mechanical',
     required this.username,
+    required this.authorId,
+    required this.teamId,
+    this.isPublic = false,
+    this.isSynced = true,
   });
 
   /// Konversi ke Map untuk disimpan ke MongoDB
@@ -26,20 +57,23 @@ class LogModel {
       'category': category,
       'createdAt': DateTime.now().toIso8601String(),
       'username': username,
+      'authorId': authorId,
+      'teamId': teamId,
+      'isPublic': isPublic,
     };
-    
+
     // Jika id sudah ada (update), masukkan ke map
     if (id != null) {
-      map['_id'] = id;
+      map['_id'] = ObjectId.fromHexString(id!);
     }
-    
+
     return map;
   }
 
   /// Konversi dari Map MongoDB ke Object
   factory LogModel.fromMap(Map<String, dynamic> map) {
     ObjectId? objectId;
-    
+
     // Handle berbagai format ObjectId dari database
     if (map['_id'] != null) {
       if (map['_id'] is ObjectId) {
@@ -54,25 +88,33 @@ class LogModel {
     }
 
     return LogModel(
-      id: objectId,
+      id: objectId?.oid,
       title: map['title'] as String? ?? '',
       description: map['description'] as String? ?? '',
       date: map['date'] != null
           ? DateTime.parse(map['date'] as String)
           : DateTime.now(),
-      category: map['category'] as String? ?? 'perkuliahan',
+      category: map['category'] as String? ?? 'mechanical',
       username: map['username'] as String? ?? 'unknown',
+      authorId: map['authorId'] as String? ?? 'unknown_author',
+      teamId: map['teamId'] as String? ?? 'unknown_team',
+      isPublic: map['isPublic'] == true, // Cara aman konversi ke bool
+      isSynced: map['isSynced'] == true || map['isSynced'] == null, // Default true jika dari cloud
     );
   }
 
   /// Copy with untuk update field tertentu
   LogModel copyWith({
-    ObjectId? id,
+    String? id,
     String? title,
     String? description,
     DateTime? date,
     String? category,
     String? username,
+    String? authorId,
+    String? teamId,
+    bool? isPublic,
+    bool? isSynced,
   }) {
     return LogModel(
       id: id ?? this.id,
@@ -81,10 +123,14 @@ class LogModel {
       date: date ?? this.date,
       category: category ?? this.category,
       username: username ?? this.username,
+      authorId: authorId ?? this.authorId,
+      teamId: teamId ?? this.teamId,
+      isPublic: isPublic ?? this.isPublic,
+      isSynced: isSynced ?? this.isSynced,
     );
   }
 
   @override
   String toString() =>
-      'LogModel(id: $id, title: $title, description: $description, date: $date, category: $category, username: $username)';
+      'LogModel(id: $id, title: $title, description: $description, date: $date, category: $category, username: $username, authorId: $authorId, teamId: $teamId, isPublic: $isPublic, isSynced: $isSynced)';
 }

@@ -15,20 +15,13 @@ class CounterView extends StatefulWidget {
 }
 
 class _CounterViewState extends State<CounterView> {
-  final CounterController _controller = CounterController();
-  bool _isLoading = true;
+  late CounterController _controller;
+  // Removed _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _initializeData();
-  }
-
-  Future<void> _initializeData() async {
-    await _controller.loadData(widget.username);
-    setState(() {
-      _isLoading = false;
-    });
+    _controller = CounterController(widget.username);
   }
 
   Color _getHistoryBackground(String text) {
@@ -108,12 +101,6 @@ class _CounterViewState extends State<CounterView> {
     const sectionStyle =
         TextStyle(fontSize: 16, fontWeight: FontWeight.w600);
 
-    if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
     return Scaffold(
       appBar: AppBar(
         title: Text('LogBook: ${widget.username}'),
@@ -124,124 +111,133 @@ class _CounterViewState extends State<CounterView> {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 24, 16, 90),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Text(
-                '${_getGreeting()}, ${widget.username}',
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Counter
-            Center(
-              child: Card(
-                elevation: 3,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 24,
-                    horizontal: 16,
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text(
-                        'Total Hitungan',
-                        style: sectionStyle,
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Animated counter
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 300),
-                        transitionBuilder: (child, animation) =>
-                            ScaleTransition(
-                          scale: animation,
-                          child: child,
-                        ),
-                        child: Text(
-                          '${_controller.value}',
-                          key: ValueKey(_controller.value),
-                          style: const TextStyle(
-                            fontSize: 42,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
+      body: FutureBuilder(
+        future: _controller.initFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(16, 24, 16, 90),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Text(
+                    '${_getGreeting()}, ${widget.username}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-              ),
-            ),
+                const SizedBox(height: 20),
 
-
-            const SizedBox(height: 24),
-
-            Text('Step: ${_controller.step}', style: sectionStyle),
-
-            Slider(
-              min: 1,
-              max: 10,
-              divisions: 9,
-              value: _controller.step.toDouble(),
-              label: _controller.step.toString(),
-              onChanged: (value) {
-                setState(() {
-                  _controller.setStep(value.toInt(), widget.username);
-                });
-              },
-            ),
-
-            const SizedBox(height: 16),
-            const Text('Riwayat Aktivitas', style: sectionStyle),
-            const SizedBox(height: 8),
-
-            Expanded(
-              child: _controller.history.isEmpty
-                  ? const Center(
-                      child: Text(
-                        'Belum ada aktivitas',
-                        style: TextStyle(color: Colors.grey),
+                // Counter
+                Center(
+                  child: Card(
+                    elevation: 3,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 24,
+                        horizontal: 16,
                       ),
-                    )
-                  : ListView.separated(
-                      itemCount: _controller.history.length,
-                      separatorBuilder: (_, _) =>
-                          const SizedBox(height: 6),
-                      itemBuilder: (context, index) {
-                        final text = _controller.history[index];
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 10,
-                            horizontal: 14,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'Total Hitungan',
+                            style: sectionStyle,
                           ),
-                          decoration: BoxDecoration(
-                            color: _getHistoryBackground(text),
-                            borderRadius:
-                                BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            text,
-                            style: const TextStyle(
-                              fontSize: 14,
+                          const SizedBox(height: 12),
+
+                          // Animated counter
+                          AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 300),
+                            transitionBuilder: (child, animation) =>
+                                ScaleTransition(
+                              scale: animation,
+                              child: child,
+                            ),
+                            child: Text(
+                              '${_controller.value}',
+                              key: ValueKey(_controller.value),
+                              style: const TextStyle(
+                                fontSize: 42,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
-                        );
-                      },
+                        ],
+                      ),
                     ),
+                  ),
+                ),
+
+
+                const SizedBox(height: 24),
+
+                Text('Step: ${_controller.step}', style: sectionStyle),
+
+                Slider(
+                  min: 1,
+                  max: 10,
+                  divisions: 9,
+                  value: _controller.step.toDouble(),
+                  label: _controller.step.toString(),
+                  onChanged: (value) {
+                    setState(() {
+                      _controller.setStep(value.toInt());
+                    });
+                  },
+                ),
+
+                const SizedBox(height: 16),
+                const Text('Riwayat Aktivitas', style: sectionStyle),
+                const SizedBox(height: 8),
+
+                Expanded(
+                  child: _controller.history.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'Belum ada aktivitas',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        )
+                      : ListView.separated(
+                          itemCount: _controller.history.length,
+                          separatorBuilder: (_, _) =>
+                              const SizedBox(height: 6),
+                          itemBuilder: (context, index) {
+                            final text = _controller.history[index];
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 10,
+                                horizontal: 14,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _getHistoryBackground(text),
+                                borderRadius:
+                                    BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                text,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
 
       floatingActionButton: Stack(

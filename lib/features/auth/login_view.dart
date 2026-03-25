@@ -41,7 +41,10 @@ class _LoginViewState extends State<LoginView>
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => LogView(username: user),
+          builder: (context) => LogView(
+            username: user,
+            role: 'Anggota',
+          ),
         ),
       );
     } else {
@@ -108,7 +111,7 @@ class _LoginViewState extends State<LoginView>
                     color: Theme.of(context)
                         .colorScheme
                         .primary
-                        .withOpacity(0.1),
+                        .withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(

@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:mongo_dart/mongo_dart.dart';
 import 'package:logbook_app_001/services/mongo_service.dart';
 import 'package:logbook_app_001/features/models/log_model.dart';
 import 'package:logbook_app_001/helpers/log_helper.dart';
@@ -31,12 +30,13 @@ void main() {
 
       // 2. Buat data baru
       final newLog = LogModel(
-        id: ObjectId(),
         title: 'Test Catatan 123',
         description: 'Ini adalah test insert dari unit test',
         date: DateTime.now(),
-        category: 'perkuliahan',
+        category: 'mechanical',
         username: 'test_user',
+        authorId: 'test_author',
+        teamId: 'test_team',
       );
 
       await LogHelper.writeLog(
