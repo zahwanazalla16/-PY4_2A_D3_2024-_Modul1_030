@@ -61,13 +61,13 @@ class _LogViewState extends State<LogView> {
 
   Future<void> _initDatabase() async {
     try {
-      // 1. LOAD LOCAL DATA FIRST (Mencegah Layar Putih)
+      //Load Local Data First (Mencegah Layar Putih)
       await LogHelper.writeLog("UI: Loading data lokal dari Hive...", source: "log_view.dart");
-      await _controller.init(); // Ini akan memanggil loadFromDisk() internal
+      await _controller.init(); // memanggil loadFromDisk() internal
       
       if (mounted) setState(() {}); // Refresh UI dengan data Hive yang ada
 
-      // 2. BACKGROUND CONNECT & SYNC
+      // Backgrount connect & sync 
       _attemptCloudConnection();
 
     } catch (e) {
@@ -79,7 +79,7 @@ class _LogViewState extends State<LogView> {
     try {
       await LogHelper.writeLog("UI: Mencoba koneksi background ke Cloud...", source: "log_view.dart");
       
-      // Kurangi timeout ke 5-7 detik saja agar tidak menggantung lama
+      // Kurangi timeout ke 5-7 detik saja
       await MongoService().connect().timeout(
         const Duration(seconds: 7),
         onTimeout: () => throw Exception("Cloud Connection Timeout"),
@@ -134,17 +134,17 @@ class _LogViewState extends State<LogView> {
     );
   }
 
-  /// Filter logs based on privacy & search keyword
+  // Filter logs based on privacy & search keyword
   List<LogModel> _getFilteredLogs(List<LogModel> allLogs) {
     final searchKeyword = _controller.searchNotifier.value.toLowerCase();
     final currentUserId = _controller.userId;
     
-    // 1. Privacy filter: Tampilkan jika owner ATAU public
+    // Privacy filter: Tampilkan hanya log yang dibuat oleh user atau yang bersifat public
     final privacyFiltered = allLogs.where((log) {
       return log.authorId == currentUserId || log.isPublic == true;
     }).toList();
     
-    // 2. Search filter
+    // Search filter
     if (searchKeyword.isEmpty) {
       return privacyFiltered;
     }
@@ -171,7 +171,7 @@ class _LogViewState extends State<LogView> {
     }
   }
 
-  // ================= ADD =================
+  // ADD
   void _showAddLogDialog() {
     Navigator.push(
       context,
@@ -186,7 +186,7 @@ class _LogViewState extends State<LogView> {
     );
   }
 
-  // ================= EDIT =================
+  // EDIT
   void _showEditLogDialog(int index, LogModel log) {
     Navigator.push(
       context,
@@ -209,12 +209,24 @@ class _LogViewState extends State<LogView> {
     super.dispose();
   }
 
-  // ================= UI =================
+  // UI 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Logbook App: ${widget.username} (${widget.role})"),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Logbook App",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              "${widget.username} (${widget.role})",
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+            ),
+          ],
+        ),
         actions: [
           // Refresh Button
           IconButton(
@@ -296,7 +308,7 @@ class _LogViewState extends State<LogView> {
                   );
                 }
 
-                // 3. Success State - Display List
+                // Success State - Display List
                 final displayLogs = _getFilteredLogs(logs); // Filter based on search & privacy
 
                 if (displayLogs.isEmpty && _controller.searchNotifier.value.isNotEmpty) {
@@ -327,110 +339,183 @@ class _LogViewState extends State<LogView> {
                       // Find actual index in controller's list for editing
                       final actualIndex = _controller.logsNotifier.value.indexOf(log);
                       
-                      return Card(
-                        margin: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
-                        child: ListTile(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => LogDetailPage(
-                                  log: log,
-                                  currentRole: widget.role,
-                                  currentUserId: _controller.userId,
-                                ),
-                              ),
-                            );
-                          },
-                          leading: Container(
-                            width: 50,
-                            height: 50,
-                            decoration: BoxDecoration(
-                              color: _getCategoryColor(log.category),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Center(
-                              child: Icon(
-                                log.isPublic ? Icons.public : Icons.lock,
-                                color: Colors.white,
-                                size: 24,
-                              ),
-                            ),
-                          ),
-                          title: Row(
-                            children: [
-                              Expanded(child: Text(log.title)),
-                              const SizedBox(width: 8),
-                              // Sync Status Icon
-                              Icon(
-                                log.isSynced ? Icons.cloud_done : Icons.cloud_off,
-                                size: 16,
-                                color: log.isSynced ? Colors.green : Colors.red,
-                              ),
-                            ],
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                log.description,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  // Category Tag
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey.shade200,
-                                      borderRadius: BorderRadius.circular(4),
+                      return Dismissible(
+                        key: ValueKey(log.id ?? log.hashCode),
+                        direction: isOwner ? DismissDirection.endToStart : DismissDirection.none,
+                        confirmDismiss: (direction) async {
+                          if (!isOwner) return false;
+                          return await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Konfirmasi Hapus'),
+                                  content: const Text('Yakin ingin menghapus catatan ini?'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.of(context).pop(false),
+                                      child: const Text('Batal'),
                                     ),
-                                    child: Text(
-                                      log.category.toUpperCase(),
-                                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      DateFormatter.formatRelative(log.date),
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey.shade600,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          trailing: isOwner  // Hanya owner bisa edit/delete
-                              ? Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(Icons.edit,
-                                          color: Colors.blue),
-                                      onPressed: () =>
-                                          _showEditLogDialog(actualIndex, log),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.delete,
-                                          color: Colors.red),
-                                      onPressed: () async {
-                                        await _controller
-                                            .removeLogByObject(log);
-                                        // Trigger refresh
-                                        setState(() {});
-                                      },
+                                    TextButton(
+                                      onPressed: () => Navigator.of(context).pop(true),
+                                      child: const Text('Hapus', style: TextStyle(color: Colors.red)),
                                     ),
                                   ],
-                                )
-                              : null,
+                                ),
+                              ) ?? false;
+                        },
+                        onDismissed: (direction) async {
+                          await _controller.removeLogByObject(log);
+                          setState(() {});
+                        },
+                        background: Container(
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          color: Colors.red,
+                          child: const Icon(Icons.delete, color: Colors.white),
+                        ),
+                        child: Card(
+                          margin: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          child: Stack(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8.0),
+                                child: ListTile(
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  minLeadingWidth: 0,
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => LogDetailPage(
+                                          log: log,
+                                          currentRole: widget.role,
+                                          currentUserId: _controller.userId,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  leading: Container(
+                                    width: 50,
+                                    height: 50,
+                                    decoration: BoxDecoration(
+                                      color: _getCategoryColor(log.category),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Center(
+                                      child: Icon(
+                                        log.isPublic ? Icons.public : Icons.lock,
+                                        color: Colors.white,
+                                        size: 24,
+                                      ),
+                                    ),
+                                  ),
+                                  title: Text(
+                                    log.title,
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                  ),
+                                  subtitle: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        log.description,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(fontSize: 13),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Row(
+                                        crossAxisAlignment: CrossAxisAlignment.center,
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: Colors.grey.shade200,
+                                              borderRadius: BorderRadius.circular(4),
+                                              border: Border.all(
+                                                color: _getCategoryColor(log.category),
+                                                width: 2,
+                                              ),
+                                            ),
+                                            child: Text(
+                                              log.category.toUpperCase(),
+                                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Icon(Icons.access_time, size: 14, color: Colors.grey),
+                                          const SizedBox(width: 4),
+                                          Flexible(
+                                            child: Text(
+                                              DateFormatter.formatRelative(log.date),
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey.shade600,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  trailing: isOwner
+                                      ? Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            IconButton(
+                                              icon: const Icon(Icons.edit, color: Colors.blue),
+                                              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                              padding: EdgeInsets.zero,
+                                              visualDensity: VisualDensity.compact,
+                                              iconSize: 18,
+                                              onPressed: () => _showEditLogDialog(actualIndex, log),
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(Icons.delete, color: Colors.red),
+                                              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                              padding: EdgeInsets.zero,
+                                              visualDensity: VisualDensity.compact,
+                                              iconSize: 18,
+                                              onPressed: () async {
+                                                final confirm = await showDialog<bool>(
+                                                  context: context,
+                                                  builder: (context) => AlertDialog(
+                                                    title: const Text('Konfirmasi Hapus'),
+                                                    content: const Text('Yakin ingin menghapus catatan ini?'),
+                                                    actions: [
+                                                      TextButton(
+                                                        onPressed: () => Navigator.of(context).pop(false),
+                                                        child: const Text('Batal'),
+                                                      ),
+                                                      TextButton(
+                                                        onPressed: () => Navigator.of(context).pop(true),
+                                                        child: const Text('Hapus', style: TextStyle(color: Colors.red)),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                );
+                                                if (confirm == true) {
+                                                  await _controller.removeLogByObject(log);
+                                                  setState(() {});
+                                                }
+                                              },
+                                            ),
+                                          ],
+                                        )
+                                      : null,
+                                ),
+                              ),
+                              Positioned(
+                                top: 10,
+                                right: 10,
+                                child: Icon(
+                                  log.isSynced ? Icons.cloud_done : Icons.cloud_off,
+                                  size: 16,
+                                  color: log.isSynced ? Colors.green : Colors.red,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       );
                     },

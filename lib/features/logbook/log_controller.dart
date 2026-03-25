@@ -21,7 +21,7 @@ class LogController {
   // Getter untuk mempermudah akses list data saat ini
   List<LogModel> get logs => logsNotifier.value;
 
-  // --- KONSTRUKTOR ---
+  // Constructor
   LogController({
     required this.username,
     required this.userId,
@@ -36,12 +36,12 @@ class LogController {
     await loadFromDisk();
   }
 
-  /// Pastikan init selesai sebelum operation
+  // Pastikan init selesai sebelum operation
   Future<void> ensureInitialized() async {
     await _initFuture;
   }
 
-  // HYBRID SYNC (MODUL 5)
+  // Hybrid Sync
   Future<void> syncLog(int hiveIndex, LogModel log) async {
     try {
       if (log.id == null) {
@@ -94,7 +94,7 @@ class LogController {
     );
 
     try {
-      // 1. SIMPAN KE HIVE (LOCAL FIRST)
+      // Simpan ke Hive (local)
       final index = await hiveBox.add(newLog);
 
       await LogHelper.writeLog(
@@ -103,7 +103,7 @@ class LogController {
         level: 2,
       );
 
-      // 2. COBA SYNC KE CLOUD
+      // Coba Sync ke cloud
       await syncLog(index, newLog);
     } catch (e) {
       await LogHelper.writeLog(
@@ -112,7 +112,7 @@ class LogController {
         level: 3,
       );
     } finally {
-      // 3. UPDATE UI DARI HIVE
+      // Update UI dari Hive
       logsNotifier.value = hiveBox.values.toList();
 
       Future.delayed(const Duration(milliseconds: 500), () {
@@ -121,10 +121,7 @@ class LogController {
     }
   }
 
-  // ============================================================
   // UPDATE LOG
-  // ============================================================
-
   Future<void> updateLog(int index, String newTitle, String newDesc,
       [String category = 'mechanical']) async {
     final currentLogs = List<LogModel>.from(logsNotifier.value);
@@ -143,13 +140,13 @@ class LogController {
     );
 
     try {
-      // UPDATE LOCAL HIVE
+      // Update Local Hive
       await hiveBox.putAt(index, updatedLog);
 
-      // COBA SYNC KE CLOUD
+      // Coba Sync ke Cloud
       await syncLog(index, updatedLog);
 
-      // UPDATE UI DARI HIVE
+      // Update UI dari Hive
       logsNotifier.value = hiveBox.values.toList();
 
       await LogHelper.writeLog(
@@ -171,13 +168,10 @@ class LogController {
     
   }
 
-  // ============================================================
   // ADD LOG DIRECT (dari LogEditorPage)
-  // ============================================================
-
   Future<void> addLogDirect(LogModel log) async {
     try {
-      // 1. SIMPAN KE HIVE (LOCAL FIRST)
+      // Simpan ke Hive (local)
       final localLog = log.copyWith(isSynced: false);
       final index = await hiveBox.add(localLog);
 
@@ -187,7 +181,7 @@ class LogController {
         level: 2,
       );
 
-      // 2. COBA SYNC KE CLOUD
+      // Coba Sync ke cloud
       await syncLog(index, localLog);
     } catch (e) {
       await LogHelper.writeLog(
@@ -196,7 +190,7 @@ class LogController {
         level: 3,
       );
     } finally {
-      // 3. UPDATE UI DARI HIVE
+      // Update UI dari Hive
       logsNotifier.value = hiveBox.values.toList();
 
       Future.delayed(const Duration(milliseconds: 500), () {
@@ -205,20 +199,17 @@ class LogController {
     }
   }
 
-  // ============================================================
   // UPDATE LOG DIRECT (dari LogEditorPage)
-  // ============================================================
-
   Future<void> updateLogDirect(int index, LogModel updatedLog) async {
     try {
-      // 1. UPDATE LOCAL HIVE
+      // Update Local Hive
       final localLog = updatedLog.copyWith(isSynced: false);
       await hiveBox.putAt(index, localLog);
 
-      // 2. COBA SYNC KE CLOUD
+      // Update ke Cloud
       await syncLog(index, localLog);
 
-      // UPDATE UI DARI HIVE
+      // Update UI dari Hive
       logsNotifier.value = hiveBox.values.toList();
 
       await LogHelper.writeLog(
@@ -239,10 +230,7 @@ class LogController {
     }
   }
 
-  // ============================================================
   // DELETE LOG
-  // ============================================================
-
   Future<void> removeLog(int index) async {
   final currentLogs = List<LogModel>.from(logsNotifier.value);
 
@@ -257,9 +245,7 @@ class LogController {
 
   final targetLog = currentLogs[index];
 
-  // =========================
   // SECURITY VALIDATION (RBAC)
-  // =========================
   if (!AccessControlService.canPerform(
     userRole,
     'delete',
@@ -274,15 +260,15 @@ class LogController {
   }
 
   try {
-    // DELETE LOCAL HIVE
+    // Delete Local Hive
     await hiveBox.deleteAt(index);
 
-    // DELETE CLOUD
+    // Delete dari Cloud jika sudah punya ID
     if (targetLog.id != null) {
       await MongoService().deleteLog(targetLog.id!);
     }
 
-    // UPDATE UI DARI HIVE
+    // Update UI dari Hive
     logsNotifier.value = hiveBox.values.toList();
 
     await LogHelper.writeLog(
@@ -299,10 +285,7 @@ class LogController {
   }
 }
 
-  // ============================================================
   // DELETE BY OBJECT
-  // ============================================================
-
   Future<void> removeLogByObject(LogModel log) async {
     try {
       final index = hiveBox.values.toList().indexWhere((e) => e.id == log.id);
@@ -315,7 +298,7 @@ class LogController {
         await MongoService().deleteLog(log.id!);
       }
 
-      // UPDATE UI DARI HIVE
+      // Update UI dari Hive
       logsNotifier.value = hiveBox.values.toList();
 
       await LogHelper.writeLog(
@@ -336,24 +319,21 @@ class LogController {
     }
   }
 
-  // ============================================================
   // LOAD DATA
-  // ============================================================
-
   Future<void> loadFromDisk() async {
     try {
-      // 1. Ambil data dari Cloud
+      // Ambil data dari Cloud
       final cloudData = await MongoService().getLogs();
       
-      // 2. Ambil data lokal yang BELUM sinkron
+      // Ambil data lokal yang belum sinkron
       final unsyncedLogs = hiveBox.values.where((log) => !log.isSynced).toList();
 
-      // 3. Update Hive: Hapus semua, masukkan data Cloud + data yang belum sinkron
+      // Update Hive: Hapus semua, masukkan data Cloud + data yang belum sinkron
       await hiveBox.clear();
       await hiveBox.addAll(cloudData); // Cloud data is already synced
       await hiveBox.addAll(unsyncedLogs);
 
-      // 4. Update UI dengan semua data yang ada di Hive sekarang
+      // Update UI dengan semua data yang ada di Hive sekarang
       logsNotifier.value = hiveBox.values.toList();
       searchNotifier.value = '';
 
@@ -374,10 +354,7 @@ class LogController {
     }
   }
 
-  // ============================================================
-  // REFRESH
-  // ============================================================
-
+  // REFRESH DATA
   Future<void> refreshData() async {
     try {
       await LogHelper.writeLog(
@@ -386,7 +363,7 @@ class LogController {
         level: 3,
       );
 
-      await loadFromDisk(); // Gunakan loadFromDisk yang sudah cerdas
+      await loadFromDisk();
 
       refreshTrigger.value = !refreshTrigger.value;
     } catch (e) {
@@ -398,12 +375,9 @@ class LogController {
     }
   }
 
-  // ============================================================
   // SEARCH LOG
-  // ============================================================
-
   void searchLog(String query) {
-    searchNotifier.value = query; // UPDATE SEARCH NOTIFIER
+    searchNotifier.value = query; // Update search notifier
     
     if (query.isEmpty) {
       logsNotifier.value = hiveBox.values.toList();

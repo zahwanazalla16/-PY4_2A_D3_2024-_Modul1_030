@@ -86,6 +86,19 @@ class _LogEditorPageState extends State<LogEditorPage> {
     super.dispose();
   }
 
+  Color _getCategoryColor(String category) {
+    switch (category) {
+      case 'mechanical':
+        return const Color(0xFFFFE5B4);
+      case 'software':
+        return const Color(0xFFFFB3D9);
+      case 'electronic':
+        return const Color(0xFFB3D9FF);
+      default:
+        return const Color(0xFFFFE5B4);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final pageTitle = widget.log == null ? "Catatan Baru" : "Edit Catatan";
@@ -97,11 +110,19 @@ class _LogEditorPageState extends State<LogEditorPage> {
         actions: [
           // Save Button
           Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: ElevatedButton.icon(
-              onPressed: _save,
-              icon: const Icon(Icons.check),
-              label: const Text('Simpan'),
+            padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+            child: SizedBox(
+              height: 40,
+              child: ElevatedButton.icon(
+                onPressed: _save,
+                icon: const Icon(Icons.save),
+                label: const Text('Simpan'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  minimumSize: const Size(80, 40),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
             ),
           ),
         ],
@@ -229,53 +250,39 @@ class _LogEditorPageState extends State<LogEditorPage> {
           const SizedBox(height: 16),
 
           // Privacy Dropdown
-          DropdownButtonFormField<bool>(
-            initialValue: _isPublic,
-            decoration: InputDecoration(
-              labelText: 'Privasi',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.lock, size: 20),
+                  const SizedBox(width: 8),
+                  const Text('Privasi Catatan', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Spacer(),
+                  Switch(
+                    value: _isPublic,
+                    onChanged: (val) {
+                      setState(() {
+                        _isPublic = val;
+                      });
+                    },
+                  ),
+                  Icon(_isPublic ? Icons.public : Icons.lock, color: _isPublic ? Colors.green : Colors.grey),
+                ],
               ),
-              prefixIcon: Icon(_isPublic ? Icons.public : Icons.lock),
-            ),
-            items: const [
-              DropdownMenuItem(value: false, child: Text('Private')),
-              DropdownMenuItem(value: true, child: Text('Public')),
+              const SizedBox(height: 2),
+              Padding(
+                padding: const EdgeInsets.only(left: 20),
+                child: Text(
+                  _isPublic
+                      ? 'Public (semua dapat melihat)'
+                      : 'Private (hanya anda yang dapat melihat)',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                ),
+              ),
             ],
-            onChanged: (bool? newValue) {
-              if (newValue != null) {
-                setState(() {
-                  _isPublic = newValue;
-                });
-              }
-            },
           ),
           const SizedBox(height: 24),
-
-          // Markdown Guide
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.blue.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  '📝 Panduan Markdown:',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                ),
-                const SizedBox(height: 8),
-                _buildMarkdownGuide('# Heading 1', 'Untuk judul besar'),
-                _buildMarkdownGuide('## Heading 2', 'Untuk subjudul'),
-                _buildMarkdownGuide('**teks** atau __teks__', 'Untuk teks tebal'),
-                _buildMarkdownGuide('*teks* atau _teks_', 'Untuk teks miring'),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
 
           // Description Input
           TextField(
@@ -285,40 +292,14 @@ class _LogEditorPageState extends State<LogEditorPage> {
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
-              hintText: 'Tulis catatan Anda di sini...',
+              hintText: 'Tulis catatan Anda di sini...\n\nPanduan Markdown:\n# Heading 1 , untuk judul utama\n## Heading 2 , untuk sub judul\n**teks** / __teks__ untuk teks tebal\n*teks* / _teks_ untuk teks miring',
+              hintMaxLines: 8,
               alignLabelWithHint: true,
+              hintStyle: TextStyle(color: Colors.grey.shade500),
             ),
             minLines: 12,
             maxLines: 20,
             textAlignVertical: TextAlignVertical.top,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMarkdownGuide(String syntax, String description) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 2,
-            child: Text(
-              syntax,
-              style: const TextStyle(
-                fontFamily: 'monospace',
-                fontSize: 11,
-                color: Colors.grey,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 3,
-            child: Text(
-              description,
-              style: const TextStyle(fontSize: 12),
-            ),
           ),
         ],
       ),
@@ -340,6 +321,27 @@ class _LogEditorPageState extends State<LogEditorPage> {
               fontSize: 22,
               fontWeight: FontWeight.bold,
             ),
+          ),
+          const SizedBox(height: 12),
+          // Kategori Preview
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(
+                    color: _getCategoryColor(_selectedCategory),
+                    width: 2,
+                  ),
+                ),
+                child: Text(
+                  _selectedCategory.toUpperCase(),
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           const Divider(),
