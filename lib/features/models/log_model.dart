@@ -35,6 +35,9 @@ class LogModel {
   @HiveField(9)
   final bool isSynced;
 
+  @HiveField(10)
+  final bool pendingDelete;
+
   LogModel({
     this.id,
     required this.title,
@@ -46,6 +49,7 @@ class LogModel {
     required this.teamId,
     this.isPublic = false,
     this.isSynced = true,
+    this.pendingDelete = false,
   });
 
   /// Konversi ke Map untuk disimpan ke MongoDB
@@ -115,6 +119,7 @@ class LogModel {
     String? teamId,
     bool? isPublic,
     bool? isSynced,
+    bool? pendingDelete,
   }) {
     return LogModel(
       id: id ?? this.id,
@@ -127,10 +132,11 @@ class LogModel {
       teamId: teamId ?? this.teamId,
       isPublic: isPublic ?? this.isPublic,
       isSynced: isSynced ?? this.isSynced,
+      pendingDelete: pendingDelete ?? this.pendingDelete,
     );
   }
 
   @override
   String toString() =>
-      'LogModel(id: $id, title: $title, description: $description, date: $date, category: $category, username: $username, authorId: $authorId, teamId: $teamId, isPublic: $isPublic, isSynced: $isSynced)';
+      'LogModel(id: $id, title: $title, description: $description, date: $date, category: $category, username: $username, authorId: $authorId, teamId: $teamId, isPublic: $isPublic, isSynced: $isSynced, pendingDelete: $pendingDelete)';
 }

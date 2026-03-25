@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:logbook_app_001/features/auth/login_view.dart';
 import 'package:logbook_app_001/helpers/log_helper.dart';
 import 'package:logbook_app_001/helpers/date_formatter.dart';
@@ -26,7 +28,7 @@ class LogView extends StatefulWidget {
 class _LogViewState extends State<LogView> {
   late LogController _controller;
   late GlobalKey<RefreshIndicatorState> _refreshIndicatorKey;
-  bool _isOnline = true;
+  bool _isOnline = false;
   late StreamSubscription<bool> _connectionSubscription;
 
   @override
@@ -39,6 +41,8 @@ class _LogViewState extends State<LogView> {
       userRole: widget.role,
       teamId: 'default_team',
     );
+
+    _initializeConnectionStatus();
     
     // Monitor connection status
     _connectionSubscription = ConnectionChecker().connectionStatusStream.listen((isOnline) {
@@ -57,6 +61,13 @@ class _LogViewState extends State<LogView> {
         _initDatabase();
       }
     });
+  }
+
+  Future<void> _initializeConnectionStatus() async {
+    final hasConnection = await ConnectionChecker().hasConnection();
+    if (mounted) {
+      setState(() => _isOnline = hasConnection);
+    }
   }
 
   Future<void> _initDatabase() async {
@@ -209,7 +220,7 @@ class _LogViewState extends State<LogView> {
     super.dispose();
   }
 
-  // UI 
+  // UI
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -228,7 +239,6 @@ class _LogViewState extends State<LogView> {
           ],
         ),
         actions: [
-          // Refresh Button
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
@@ -236,7 +246,6 @@ class _LogViewState extends State<LogView> {
               _controller.refreshData();
             },
           ),
-          // Logout Button
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: _handleLogout,
@@ -245,7 +254,6 @@ class _LogViewState extends State<LogView> {
       ),
       body: Column(
         children: [
-          // Online/Offline Status Indicator
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             color: _isOnline ? Colors.green.withValues(alpha: 0.2) : Colors.red.withValues(alpha: 0.2),
@@ -267,8 +275,6 @@ class _LogViewState extends State<LogView> {
               ],
             ),
           ),
-          
-          // SEARCH BAR
           Padding(
             padding: const EdgeInsets.all(12),
             child: TextField(
@@ -280,48 +286,58 @@ class _LogViewState extends State<LogView> {
               ),
             ),
           ),
-
-          // VALUE-LISTENABLE-BASED LIST
           Expanded(
             child: ValueListenableBuilder<List<LogModel>>(
               valueListenable: _controller.logsNotifier,
               builder: (context, logs, child) {
+                final displayLogs = _getFilteredLogs(logs);
 
-                // 2. No Data State
-                if (logs.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.cloud_off, size: 64, color: Colors.grey),
-                        const SizedBox(height: 16),
-                        const Text("Belum ada catatan di Logbook."),
-                        const SizedBox(height: 13),
-                        const Text("Coba buat catatan pertama Anda."),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _showAddLogDialog,
-                          child: const Text(" + Buat Catatan"),
-                        ),
-                      ],
+                if (logs.isEmpty || (displayLogs.isEmpty && _controller.searchNotifier.value.isEmpty)) {
+                  return SizedBox.expand(
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          const _EmptyStateIllustration(),
+                          const SizedBox(height: 8),
+                          const Text(
+                            "Belum ada catatan di Logbook.",
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            "Coba buat catatan pertama Anda.",
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 12),
+                          ElevatedButton(
+                            onPressed: _showAddLogDialog,
+                            child: const Text(" + Buat Catatan"),
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 }
 
-                // Success State - Display List
-                final displayLogs = _getFilteredLogs(logs); // Filter based on search & privacy
-
                 if (displayLogs.isEmpty && _controller.searchNotifier.value.isNotEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.search_off, size: 64, color: Colors.grey),
-                        const SizedBox(height: 16),
-                        Text(
-                          "Tidak ada hasil untuk '${_controller.searchNotifier.value}'",
-                        ),
-                      ],
+                  return SizedBox.expand(
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          const _EmptyStateIllustration(),
+                          const SizedBox(height: 8),
+                          Text(
+                            "Tidak ada hasil untuk '${_controller.searchNotifier.value}'",
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 }
@@ -331,14 +347,13 @@ class _LogViewState extends State<LogView> {
                   onRefresh: _controller.refreshData,
                   color: const Color(0xFFA8D5BA),
                   child: ListView.builder(
+                    padding: const EdgeInsets.only(bottom: 96),
                     itemCount: displayLogs.length,
                     itemBuilder: (context, index) {
                       final log = displayLogs[index];
                       final isOwner = log.authorId == _controller.userId;
-                      
-                      // Find actual index in controller's list for editing
                       final actualIndex = _controller.logsNotifier.value.indexOf(log);
-                      
+
                       return Dismissible(
                         key: ValueKey(log.id ?? log.hashCode),
                         direction: isOwner ? DismissDirection.endToStart : DismissDirection.none,
@@ -373,8 +388,7 @@ class _LogViewState extends State<LogView> {
                           child: const Icon(Icons.delete, color: Colors.white),
                         ),
                         child: Card(
-                          margin: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
+                          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           child: Stack(
                             children: [
                               Padding(
@@ -530,6 +544,109 @@ class _LogViewState extends State<LogView> {
         onPressed: _showAddLogDialog,
         child: const Icon(Icons.add),
       ),
+    );
+  }
+}
+
+class _EmptyStateIllustration extends StatefulWidget {
+  const _EmptyStateIllustration();
+
+  @override
+  State<_EmptyStateIllustration> createState() => _EmptyStateIllustrationState();
+}
+
+class _EmptyStateIllustrationState extends State<_EmptyStateIllustration>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2600),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final t = Curves.easeInOut.transform(_controller.value);
+        final bob = math.sin(t * math.pi * 2);
+
+        return SizedBox(
+          width: 260,
+          height: 260,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Transform.scale(
+                scale: 0.92 + (t * 0.08),
+                child: Container(
+                  width: 186,
+                  height: 186,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        const Color(0xFFA8D5BA).withValues(alpha: 0.30),
+                        const Color(0xFFA8D5BA).withValues(alpha: 0.04),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Transform.translate(
+                offset: Offset(0, bob * 8),
+                child: SvgPicture.asset(
+                  'assets/images/empty_state.svg',
+                  width: 240,
+                  height: 240,
+                  fit: BoxFit.contain,
+                ),
+              ),
+              Positioned(
+                top: 36,
+                right: 34,
+                child: Transform.translate(
+                  offset: Offset(0, bob * -4),
+                  child: Container(
+                    width: 12,
+                    height: 12,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFA8D5BA),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                bottom: 48,
+                left: 34,
+                child: Transform.translate(
+                  offset: Offset(0, bob * 5),
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFBBD7FF).withValues(alpha: 0.9),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

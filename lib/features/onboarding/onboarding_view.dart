@@ -14,17 +14,17 @@ class _OnboardingViewState extends State<OnboardingView> {
 
   final List<Map<String, String>> _pages = [
     {
-      "image": "assets/images/onboard1.jpeg",
+      "image": "assets/images/onboard1.png",
       "title": "Selamat Datang di LogBook App",
       "desc": "Simpan setiap perubahan counter sebagai riwayat aktivitas."
     },
     {
-      "image": "assets/images/onboard2.jpeg",
+      "image": "assets/images/onboard2.png",
       "title": "Catat Aktivitasmu",
       "desc": "Gunakan fitur counter untuk mencatat progressmu."
     },
     {
-      "image": "assets/images/onboard3.jpeg",
+      "image": "assets/images/onboard3.png",
       "title": "Kelola dengan Mudah",
       "desc": "Lihat riwayat aktivitas dan atur langkah counter sesuai kebutuhanmu."
     },

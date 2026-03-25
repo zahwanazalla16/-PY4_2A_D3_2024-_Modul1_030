@@ -292,7 +292,7 @@ class _LogEditorPageState extends State<LogEditorPage> {
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
-              hintText: 'Tulis catatan Anda di sini...\n\nPanduan Markdown:\n# Heading 1 , untuk judul utama\n## Heading 2 , untuk sub judul\n**teks** / __teks__ untuk teks tebal\n*teks* / _teks_ untuk teks miring',
+              hintText: 'Tulis catatan Anda di sini...\n\nPanduan Markdown:\n# Heading 1 , untuk judul utama\n## Heading 2 , untuk sub judul\n**teks** / __teks__ untuk teks tebal\n*teks* / _teks_ untuk teks miring\n - teks , untuk list',
               hintMaxLines: 8,
               alignLabelWithHint: true,
               hintStyle: TextStyle(color: Colors.grey.shade500),

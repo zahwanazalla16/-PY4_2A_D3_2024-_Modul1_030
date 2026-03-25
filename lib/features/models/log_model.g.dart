@@ -27,13 +27,14 @@ class LogModelAdapter extends TypeAdapter<LogModel> {
       teamId: fields[7] as String,
       isPublic: (fields[8] is bool) ? fields[8] : false,
       isSynced: (fields[9] is bool) ? fields[9] : false,
+      pendingDelete: (fields[10] is bool) ? fields[10] : false,
     );
   }
 
   @override
   void write(BinaryWriter writer, LogModel obj) {
     writer
-      ..writeByte(10)
+      ..writeByte(11)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -53,7 +54,9 @@ class LogModelAdapter extends TypeAdapter<LogModel> {
       ..writeByte(8)
       ..write(obj.isPublic)
       ..writeByte(9)
-      ..write(obj.isSynced);
+        ..write(obj.isSynced)
+        ..writeByte(10)
+        ..write(obj.pendingDelete);
   }
 
   @override

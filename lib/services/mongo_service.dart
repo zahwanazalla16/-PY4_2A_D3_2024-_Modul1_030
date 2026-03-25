@@ -107,7 +107,7 @@ class MongoService {
         source: _source,
         level: 1,
       );
-      return [];
+      rethrow;
     }
   }
 
@@ -134,7 +134,7 @@ class MongoService {
         source: _source,
         level: 1,
       );
-      return [];
+      rethrow;
     }
   }
 
@@ -148,7 +148,12 @@ class MongoService {
 
       return results.map((json) => LogModel.fromMap(json)).toList();
     } catch (e) {
-      throw Exception("Failed to fetch team logs: $e");
+      await LogHelper.writeLog(
+        "ERROR: Fetch Team Failed - $e",
+        source: _source,
+        level: 1,
+      );
+      rethrow;
     }
   }
 

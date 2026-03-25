@@ -11,18 +11,18 @@ Future<void> main() async {
   try {
     WidgetsFlutterBinding.ensureInitialized();
 
-    // 1. Load ENV (Optional if file missing)
+    // Load ENV (If file missing)
     try {
       await dotenv.load(fileName: ".env");
     } catch (e) {
       debugPrint("Warning: .env file not found. Cloud features might fail.");
     }
 
-    // 2. Initialize Intl
+    // Initialize Intl
     await initializeDateFormatting('id_ID', null);
     Intl.defaultLocale = 'id_ID';
 
-    // 3. Hive Initialization
+    // Hive Initialization
     await Hive.initFlutter();
     
     // Register Adapters
@@ -30,7 +30,7 @@ Future<void> main() async {
       Hive.registerAdapter(LogModelAdapter());
     }
 
-    // 4. Open Boxes (PENTING: Harus dibuka sebelum digunakan di controller)
+    // Open Boxes (Harus dibuka sebelum digunakan di controller)
     await Hive.openBox<LogModel>('logsBox');
     
     // Buka box counter untuk user default agar tidak error saat login

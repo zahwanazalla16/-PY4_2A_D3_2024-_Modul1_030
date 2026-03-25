@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart' as hive_box;
+import 'package:mongo_dart/mongo_dart.dart';
 import 'package:logbook_app_001/features/models/log_model.dart';
 import 'package:logbook_app_001/services/mongo_service.dart';
 import 'package:logbook_app_001/services/access_policy.dart';
@@ -20,6 +21,10 @@ class LogController {
 
   // Getter untuk mempermudah akses list data saat ini
   List<LogModel> get logs => logsNotifier.value;
+
+  List<LogModel> _visibleLogsFromHive() {
+    return hiveBox.values.where((log) => !log.pendingDelete).toList();
+  }
 
   // Constructor
   LogController({
@@ -46,15 +51,19 @@ class LogController {
     try {
       if (log.id == null) {
         // Insert Baru ke Cloud
-        await MongoService().insertLog(log);
+        final generatedId = ObjectId().oid;
+        final logWithId = log.copyWith(id: generatedId);
+        await MongoService().insertLog(logWithId);
+
+        final syncedLog = logWithId.copyWith(isSynced: true, pendingDelete: false);
+        await hiveBox.putAt(hiveIndex, syncedLog);
       } else {
         // Update ke Cloud
         await MongoService().updateLog(log);
-      }
 
-      // Jika berhasil, update status di Hive
-      final syncedLog = log.copyWith(isSynced: true);
-      await hiveBox.putAt(hiveIndex, syncedLog);
+        final syncedLog = log.copyWith(isSynced: true, pendingDelete: false);
+        await hiveBox.putAt(hiveIndex, syncedLog);
+      }
 
       await LogHelper.writeLog(
         "Sync Success: '${log.title}'",
@@ -70,13 +79,38 @@ class LogController {
 
   Future<void> syncAllUnsyncedLogs() async {
     final allLogs = hiveBox.values.toList();
-    for (int i = 0; i < allLogs.length; i++) {
-      if (!allLogs[i].isSynced) {
-        await syncLog(i, allLogs[i]);
+    for (int i = allLogs.length - 1; i >= 0; i--) {
+      final currentLog = allLogs[i];
+
+      if (currentLog.pendingDelete) {
+        try {
+          if (currentLog.id != null) {
+            await MongoService().deleteLog(currentLog.id!);
+          }
+
+          await hiveBox.deleteAt(i);
+
+          await LogHelper.writeLog(
+            "SYNC DELETE: '${currentLog.title}' berhasil dihapus dari Cloud",
+            source: "SyncManager",
+            level: 2,
+          );
+        } catch (e) {
+          await LogHelper.writeLog(
+            "SYNC DELETE PENDING: '${currentLog.title}' belum bisa dihapus - $e",
+            source: "SyncManager",
+            level: 3,
+          );
+        }
+        continue;
+      }
+
+      if (!currentLog.isSynced) {
+        await syncLog(i, currentLog);
       }
     }
     // Update UI
-    logsNotifier.value = hiveBox.values.toList();
+    logsNotifier.value = _visibleLogsFromHive();
   }
 
   // ADD LOG
@@ -113,7 +147,7 @@ class LogController {
       );
     } finally {
       // Update UI dari Hive
-      logsNotifier.value = hiveBox.values.toList();
+      logsNotifier.value = _visibleLogsFromHive();
 
       Future.delayed(const Duration(milliseconds: 500), () {
         refreshTrigger.value = !refreshTrigger.value;
@@ -147,7 +181,7 @@ class LogController {
       await syncLog(index, updatedLog);
 
       // Update UI dari Hive
-      logsNotifier.value = hiveBox.values.toList();
+      logsNotifier.value = _visibleLogsFromHive();
 
       await LogHelper.writeLog(
         "SUCCESS: Sinkronisasi Update '${oldLog.title}' Berhasil",
@@ -191,7 +225,7 @@ class LogController {
       );
     } finally {
       // Update UI dari Hive
-      logsNotifier.value = hiveBox.values.toList();
+      logsNotifier.value = _visibleLogsFromHive();
 
       Future.delayed(const Duration(milliseconds: 500), () {
         refreshTrigger.value = !refreshTrigger.value;
@@ -210,7 +244,7 @@ class LogController {
       await syncLog(index, localLog);
 
       // Update UI dari Hive
-      logsNotifier.value = hiveBox.values.toList();
+      logsNotifier.value = _visibleLogsFromHive();
 
       await LogHelper.writeLog(
         "SUCCESS: Sinkronisasi Update '${updatedLog.title}' Berhasil",
@@ -260,22 +294,34 @@ class LogController {
   }
 
   try {
-    // Delete Local Hive
-    await hiveBox.deleteAt(index);
-
-    // Delete dari Cloud jika sudah punya ID
-    if (targetLog.id != null) {
-      await MongoService().deleteLog(targetLog.id!);
+    if (targetLog.id == null) {
+      // Log lokal yang belum pernah sync, cukup hapus dari Hive
+      await hiveBox.deleteAt(index);
+      logsNotifier.value = _visibleLogsFromHive();
+      return;
     }
 
-    // Update UI dari Hive
-    logsNotifier.value = hiveBox.values.toList();
+    try {
+      await MongoService().deleteLog(targetLog.id!);
+      await hiveBox.deleteAt(index);
+      logsNotifier.value = _visibleLogsFromHive();
 
-    await LogHelper.writeLog(
-      "SUCCESS: Sinkronisasi Hapus '${targetLog.title}' Berhasil",
-      source: "log_controller.dart",
-      level: 2,
-    );
+      await LogHelper.writeLog(
+        "SUCCESS: Sinkronisasi Hapus '${targetLog.title}' Berhasil",
+        source: "log_controller.dart",
+        level: 2,
+      );
+    } catch (e) {
+      final pendingDeleteLog = targetLog.copyWith(isSynced: false, pendingDelete: true);
+      await hiveBox.putAt(index, pendingDeleteLog);
+      logsNotifier.value = _visibleLogsFromHive();
+
+      await LogHelper.writeLog(
+        "OFFLINE DELETE: '${targetLog.title}' disimpan sementara untuk sinkronisasi - $e",
+        source: "log_controller.dart",
+        level: 3,
+      );
+    }
   } catch (e) {
     await LogHelper.writeLog(
       "ERROR: Gagal sinkronisasi Hapus - $e",
@@ -288,18 +334,35 @@ class LogController {
   // DELETE BY OBJECT
   Future<void> removeLogByObject(LogModel log) async {
     try {
-      final index = hiveBox.values.toList().indexWhere((e) => e.id == log.id);
+      final index = hiveBox.values.toList().indexWhere(
+        (e) =>
+            (log.id != null && e.id == log.id) ||
+            (log.id == null &&
+                e.id == null &&
+                e.title == log.title &&
+                e.description == log.description &&
+                e.date == log.date &&
+                e.authorId == log.authorId &&
+                e.teamId == log.teamId &&
+                e.category == log.category),
+      );
 
       if (index != -1) {
-        await hiveBox.deleteAt(index);
-      }
-
-      if (log.id != null) {
-        await MongoService().deleteLog(log.id!);
+        if (log.id == null) {
+          await hiveBox.deleteAt(index);
+        } else {
+          try {
+            await MongoService().deleteLog(log.id!);
+            await hiveBox.deleteAt(index);
+          } catch (e) {
+            final pendingDeleteLog = log.copyWith(isSynced: false, pendingDelete: true);
+            await hiveBox.putAt(index, pendingDeleteLog);
+          }
+        }
       }
 
       // Update UI dari Hive
-      logsNotifier.value = hiveBox.values.toList();
+      logsNotifier.value = _visibleLogsFromHive();
 
       await LogHelper.writeLog(
         "SUCCESS: Sinkronisasi Hapus '${log.title}' Berhasil",
@@ -326,19 +389,42 @@ class LogController {
       final cloudData = await MongoService().getLogs();
       
       // Ambil data lokal yang belum sinkron
-      final unsyncedLogs = hiveBox.values.where((log) => !log.isSynced).toList();
+      final localLogs = hiveBox.values.toList();
+      final pendingDeleteLogs = localLogs.where((log) => log.pendingDelete).toList();
+      final unsyncedLogs = localLogs.where((log) => !log.isSynced && !log.pendingDelete).toList();
+
+      final mergedById = <String, LogModel>{};
+      final mergedWithoutId = <LogModel>[];
+
+      for (final cloudLog in cloudData) {
+        if (cloudLog.id != null) {
+          mergedById[cloudLog.id!] = cloudLog;
+        } else {
+          mergedWithoutId.add(cloudLog);
+        }
+      }
+
+      for (final localLog in unsyncedLogs) {
+        if (localLog.id != null) {
+          mergedById[localLog.id!] = localLog;
+        } else {
+          mergedWithoutId.add(localLog);
+        }
+      }
+
+      final visibleMerged = <LogModel>[...mergedById.values, ...mergedWithoutId];
 
       // Update Hive: Hapus semua, masukkan data Cloud + data yang belum sinkron
       await hiveBox.clear();
-      await hiveBox.addAll(cloudData); // Cloud data is already synced
-      await hiveBox.addAll(unsyncedLogs);
+      await hiveBox.addAll(visibleMerged);
+      await hiveBox.addAll(pendingDeleteLogs);
 
       // Update UI dengan semua data yang ada di Hive sekarang
-      logsNotifier.value = hiveBox.values.toList();
+      logsNotifier.value = visibleMerged;
       searchNotifier.value = '';
 
       await LogHelper.writeLog(
-        "SUCCESS: Data sinkron (Cloud: ${cloudData.length}, Unsynced: ${unsyncedLogs.length})",
+        "SUCCESS: Data sinkron (Cloud: ${cloudData.length}, Unsynced: ${unsyncedLogs.length}, PendingDelete: ${pendingDeleteLogs.length})",
         source: "log_controller.dart",
         level: 2,
       );
@@ -350,7 +436,7 @@ class LogController {
       );
 
       // Jika gagal (offline), tampilkan apa adanya yang ada di Hive
-      logsNotifier.value = hiveBox.values.toList();
+      logsNotifier.value = _visibleLogsFromHive();
     }
   }
 
@@ -380,9 +466,9 @@ class LogController {
     searchNotifier.value = query; // Update search notifier
     
     if (query.isEmpty) {
-      logsNotifier.value = hiveBox.values.toList();
+      logsNotifier.value = _visibleLogsFromHive();
     } else {
-      logsNotifier.value = hiveBox.values
+      logsNotifier.value = _visibleLogsFromHive()
           .where((log) =>
               log.title.toLowerCase().contains(query.toLowerCase()) ||
               log.description.toLowerCase().contains(query.toLowerCase()) ||
