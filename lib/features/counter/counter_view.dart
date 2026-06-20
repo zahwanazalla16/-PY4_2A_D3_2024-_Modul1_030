@@ -21,7 +21,8 @@ class _CounterViewState extends State<CounterView> {
   @override
   void initState() {
     super.initState();
-    _controller = CounterController(widget.username);
+    _controller = CounterController();
+    _controller.initFuture = _controller.loadData(widget.username);
   }
 
   Color _getHistoryBackground(String text) {
@@ -191,7 +192,7 @@ class _CounterViewState extends State<CounterView> {
                   label: _controller.step.toString(),
                   onChanged: (value) {
                     setState(() {
-                      _controller.setStep(value.toInt());
+                      _controller.setStep(value.toInt(), widget.username);
                     });
                   },
                 ),

@@ -6,7 +6,9 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import 'package:logbook_app_001/features/onboarding/onboarding_view.dart';
 import 'package:logbook_app_001/features/models/log_model.dart';
+import 'package:camera/camera.dart';
 
+List<CameraDescription> cameras = [];
 Future<void> main() async {
   try {
     WidgetsFlutterBinding.ensureInitialized();
@@ -18,6 +20,12 @@ Future<void> main() async {
       debugPrint("Warning: .env file not found. Cloud features might fail.");
     }
 
+    try {
+      cameras = await availableCameras();
+    } catch (e) {
+      print(e);
+    }
+    
     // Initialize Intl
     await initializeDateFormatting('id_ID', null);
     Intl.defaultLocale = 'id_ID';

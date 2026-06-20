@@ -11,6 +11,7 @@ class LogController {
   final String userId;
   final String userRole;
   final String teamId;
+  final bool isTestMode;
   final ValueNotifier<List<LogModel>> logsNotifier =
       ValueNotifier<List<LogModel>>([]);
   final ValueNotifier<String> searchNotifier = ValueNotifier<String>('');
@@ -32,13 +33,17 @@ class LogController {
     required this.userId,
     required this.userRole,
     required this.teamId,
+    this.isTestMode = false,
   }) {
     _initFuture = init();
   }
 
   Future<void> init() async {
     hiveBox = hive_box.Hive.box<LogModel>('logsBox');
-    await loadFromDisk();
+    // Skip loadFromDisk saat test mode untuk menghindari MongoDB connection
+    if (!isTestMode) {
+      await loadFromDisk();
+    }
   }
 
   // Pastikan init selesai sebelum operation
@@ -49,6 +54,13 @@ class LogController {
   // Hybrid Sync
   Future<void> syncLog(int hiveIndex, LogModel log) async {
     try {
+      // Skip sync ke cloud saat test mode
+      if (isTestMode) {
+        final syncedLog = log.copyWith(isSynced: true, pendingDelete: false);
+        await hiveBox.putAt(hiveIndex, syncedLog);
+        return;
+      }
+
       if (log.id == null) {
         // Insert Baru ke Cloud
         final generatedId = ObjectId().oid;
@@ -386,7 +398,10 @@ class LogController {
   Future<void> loadFromDisk() async {
     try {
       // Ambil data dari Cloud
-      final cloudData = await MongoService().getLogs();
+      List<LogModel> cloudData = [];
+        if (!isTestMode) {
+          cloudData = await MongoService().getLogs();
+        }
       
       // Ambil data lokal yang belum sinkron
       final localLogs = hiveBox.values.toList();

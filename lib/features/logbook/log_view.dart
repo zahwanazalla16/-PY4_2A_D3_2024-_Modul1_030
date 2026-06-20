@@ -9,6 +9,7 @@ import 'package:logbook_app_001/services/mongo_service.dart';
 import 'package:logbook_app_001/features/models/log_model.dart';
 import 'package:logbook_app_001/pages/log_detail_page.dart';
 import 'package:logbook_app_001/features/logbook/log_editor_page.dart';
+import 'package:logbook_app_001/pcd/vision_view.dart';
 import 'dart:async';
 import 'log_controller.dart';
 class LogView extends StatefulWidget {
@@ -540,9 +541,35 @@ class _LogViewState extends State<LogView> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddLogDialog,
-        child: const Icon(Icons.add),
+      floatingActionButton: Stack(
+        children: [
+          // Camera Button (Left)
+          Positioned(
+            bottom: 16,
+            left: 30,
+            child: FloatingActionButton(
+              heroTag: 'camera',
+              backgroundColor: Colors.blue,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const VisionView()),
+                );
+              },
+              child: const Icon(Icons.camera_alt),
+            ),
+          ),
+          // Add Log Button (Right)
+          Positioned(
+            bottom: 16,
+            right: 30,
+            child: FloatingActionButton(
+              heroTag: 'add',
+              onPressed: _showAddLogDialog,
+              child: const Icon(Icons.add),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -5,6 +5,7 @@ class CounterController {
   int _step = 1;
 
   final List<String> _history = [];
+  late Future<void> initFuture;
 
   int get value => _counter;
   int get step => _step;
